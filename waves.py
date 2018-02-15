@@ -1,55 +1,67 @@
+from pyqtgraph.Qt import QtCore, QtGui
+import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 import numpy as np
-import matplotlib.pyplot as plt
-import mpl_toolkits.mplot3d.axes3d as p3
-import mpl_toolkits.mplot3d.art3d as art3d
-import matplotlib.animation as animation
-import matplotlib.cm as cm
 import scipy.ndimage as ndimage
 
 
-class Waves:
+class WaveSolver:
     def __init__(self):
         self.N = 20
         self.c2 = 0.1
-        self.stencil = np.array([[0, self.c2, 0], [self.c2, 2-4*self.c2, self.c2], [0, self.c2, 0]])
-        X = np.arange(0, self.N)
-        Y = np.arange(0, self.N)
-        self.X, self.Y = np.meshgrid(X, Y)
-        self.tX, self.tY = np.transpose(self.X), np.transpose(self.Y)
-        self.Z = np.zeros_like(self.X, dtype=np.float)
+        self.stencil = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]])*self.c2
+        self.X = np.arange(-self.N, self.N, dtype=np.float)
+        self.Y = np.arange(-self.N, self.N, dtype=np.float)
+        self.Z = np.zeros((self.N*2, self.N*2), dtype=np.float)
         self.Z_prev = self.Z
         
-        self.fig = plt.figure()
-        self.ax = p3.Axes3D(self.fig)
-
-        self.linec = art3d.Line3DCollection(self.get_lines())
-        self.ax.add_collection(self.linec)
-
-        self.ax.set_zlim3d([-1, 1], auto=False)
-        self.ax.set_xlim3d([0, self.N])
-        self.ax.set_ylim3d([0, self.N])
-
-    def get_lines(self):
-        tZ = np.transpose(self.Z)
-        return ([zip(xl, yl, zl) for xl, yl, zl in zip(self.X, self.Y, self.Z)]
-            + [zip(xl, yl, zl) for xl, yl, zl in zip(self.tX, self.tY, tZ)])
        
-    def update(self, num):
-        if num < 30:
-            self.Z[:,0] = np.sin(num/10)*np.ones(self.N)*.5
+    def update(self, frame):
+        if frame < 30:
+            self.Z[:,0] = np.sin(frame/10)*np.ones(self.N*2)*5
         
-        Z_next = ndimage.convolve(self.Z, self.stencil, mode='constant') - self.Z_prev
+        Z_next = ndimage.convolve(self.Z, self.stencil, mode='constant')
+        Z_next = Z_next - self.Z_prev + 2*self.Z
         self.Z_prev, self.Z = self.Z, Z_next
 
-        self.linec.set_segments(self.get_lines())
+
+class WaveViewer:
+    def __init__(self, wave_solver):
+        # Create GL view widget
+        self.app = QtGui.QApplication([])
+        self.view = gl.GLViewWidget()
+        self.view.show()
+        self.view.setBackgroundColor(200, 200, 200)
+        self.view.setWindowTitle('Wave Equation')
+        self.view.setCameraPosition(distance=50)
+
+        # Add wave
+        self.wave_solver = wave_solver
+        self.wave_plot = gl.GLSurfacePlotItem(
+                           x=wave_solver.X,
+                           y=wave_solver.Y,
+                           computeNormals=False,
+                           smooth=False,
+                           drawEdges=True,
+                           antialias=True,
+                           color=(28/256, 107/256, 160/256, 1.0),)
+
+        self.view.addItem(self.wave_plot)
+        self.frame = 0
     
+    def update(self):
+        self.wave_solver.update(self.frame)
+        self.frame += 1
+        self.wave_plot.setData(z=self.wave_solver.Z)
 
-w = Waves()
 
-def update(num):
-    return w.update(num)
+    def start(self):
+        timer = QtCore.QTimer()
+        timer.timeout.connect(self.update)
+        timer.start(30)
 
-surf_ani = animation.FuncAnimation(w.fig, update, None, fargs=(),
-                                   interval=0, blit=False)
+        QtGui.QApplication.instance().exec_()
 
-plt.show()
+ws = WaveSolver()
+wv = WaveViewer(ws)
+wv.start()
