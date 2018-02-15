@@ -2,6 +2,8 @@
 
 Demonstration of discrete wave equation solver.
 
-## Screenshot:
+### Screenshot using current renderer (pyqtgraph)
+![Screenshot](screenshots/pyqtgraph.png)
 
-![Screenshot](waves.png)
+### Screenshot using matplotlib
+![Screenshot](screenshots/matplotlib.png)
