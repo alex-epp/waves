@@ -38,7 +38,7 @@ class Viewer:
         self.app = QtGui.QApplication([])
         self.view = gl.GLViewWidget()
         self.view.show()
-        self.view.setBackgroundColor(200, 200, 200)
+        self.view.setBackgroundColor(255, 255, 255)
         self.view.setWindowTitle(title)
         self.view.setCameraPosition(distance=max(*solver.Z.shape))
 
